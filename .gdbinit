@@ -224,8 +224,10 @@ class Dashboard(gdb.Command):
         # setup style commands
         Dashboard.StyleCommand(self, 'dashboard', R, R.attributes())
         # setup events
-        gdb.events.cont.connect(lambda _: self.on_continue())
-        gdb.events.stop.connect(lambda _: self.on_stop())
+        self.onStopLambda = lambda _: self.on_stop()
+        self.onContinueLambda = lambda _: self.on_continue()
+        gdb.events.cont.connect(self.onContinueLambda)
+        gdb.events.stop.connect(self.onStopLambda)
         gdb.events.exited.connect(lambda _: self.on_exit())
 
     def on_continue(self):
@@ -515,9 +517,13 @@ The current status is printed if no argument is present."""
                 print('The dashboard is {}'.format(status))
             elif arg == 'on':
                 self.dashboard.enabled = True
+                gdb.events.cont.connect(self.dashboard.onContinueLambda)
+                gdb.events.stop.connect(self.dashboard.onStopLambda)
                 self.dashboard.redisplay()
             elif arg == 'off':
                 self.dashboard.enabled = False
+                gdb.events.cont.disconnect(self.dashboard.onContinueLambda)
+                gdb.events.stop.disconnect(self.dashboard.onStopLambda)
             else:
                 msg = 'Wrong argument "{}"; expecting "on" or "off"'
                 Dashboard.err(msg.format(arg))
